@@ -27,27 +27,34 @@ class CrmLead(models.Model):
     def _track_get_fields(self):
         """
         Override to limit which fields are tracked in the chatter.
-        Only partner_id changes will be logged, filtering out other
-        tracked fields like stage_id, expected_revenue, etc.
         
-        This reduces chatter noise by only showing customer-related changes.
+        Only partner_id and stage_id changes will be logged:
+        - partner_id: Customer changes (our custom requirement)
+        - stage_id: Required by mail.tracking.duration.mixin for duration tracking
+        
+        Other fields like expected_revenue, user_id, etc. will NOT be tracked,
+        reducing chatter noise.
         """
         # Get all tracked fields from parent
         all_tracked_fields = super()._track_get_fields()
         
-        # Only keep partner_id for tracking
-        # Returns a set of field names that should be tracked
-        if all_tracked_fields:
-            return all_tracked_fields & {'partner_id'}
-        return set()
+        if not all_tracked_fields:
+            return set()
+        
+        # Keep only partner_id and stage_id for tracking
+        # stage_id MUST be included because crm.lead uses mail.tracking.duration.mixin
+        # which requires stage_id to have tracking=True for duration computation
+        allowed_fields = {'partner_id', 'stage_id'}
+        return all_tracked_fields & allowed_fields
 
     def _track_subtype(self, init_values):
         """
         Override to customize tracking subtypes.
-        Returns appropriate subtype when partner_id changes.
+        Returns appropriate subtype when tracked fields change.
         """
         self.ensure_one()
-        if 'partner_id' in init_values:
+        # Use stage subtype for both partner and stage changes
+        if 'partner_id' in init_values or 'stage_id' in init_values:
             return self.env.ref('crm.mt_lead_stage')
         return super()._track_subtype(init_values)
 
