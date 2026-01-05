@@ -1,27 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Tree View for Custom Project Team Cost -->
+    <!-- 
+        Tree/List View for Custom Project Profitability Dashboard
+        Displays the HR costs breakdown per user/employee for a project
+    -->
     <record id="view_custom_project_profitability_dashboard_tree" model="ir.ui.view">
-        <field name="name">custom.project.profitability.dashboard.tree</field>
+        <field name="name">custom.project.profitability.dashboard.list</field>
         <field name="model">custom.project.profitability.dashboard</field>
         <field name="arch" type="xml">
-            <list create="false" delete="false" edit="false" duplicate="false" js_class="no_header" export_xlsx="false">
-                <field name="user_id"/>
-                <field name="total_hours"/>
-                <field name="hourly_rate"/>
-                <field name="total_payment"/>
-                <field name="project_id"/>
+            <list string="HR Costs Summary" create="false" delete="false" edit="false"
+                  decoration-warning="hourly_rate == 0"
+                  decoration-danger="hourly_rate == 0 and total_hours > 0">
+                <field name="user_id" string="User"/>
+                <field name="employee_id" string="Employee" optional="show"/>
+                <field name="total_hours" string="Total Hours" sum="Total Hours"/>
+                <field name="hourly_rate" string="Hourly Rate (€/h)"/>
+                <field name="total_payment" string="Total Cost (€)" sum="Total Cost"/>
+                <field name="project_id" column_invisible="True"/>
             </list>
         </field>
     </record>
 
-    <!-- Action for Custom Project Team Cost -->
+    <!-- Action for Custom Project Profitability Dashboard popup -->
     <record id="action_custom_project_profitability_dashboard" model="ir.actions.act_window">
-        <field name="name">HR Total Cost</field>
+        <field name="name">Summary of HR Costs</field>
         <field name="res_model">custom.project.profitability.dashboard</field>
         <field name="view_mode">list</field>
         <field name="target">new</field>
-        <field name="context">{'no_create': True'no_header': True 'no_footer': True}</field>
+        <field name="context">{'create': False}</field>
         <field name="groups_id" eval="[(4, ref('custom_project_profitability_dashboard.group_custom_profitability_access'))]"/>
+    </record>
+
+    <!-- 
+        Extend project form view to show custom profitability fields
+        This adds a dedicated section for viewing financial KPIs directly on the project form
+    -->
+    <record id="custom_project_form_profitability_fields" model="ir.ui.view">
+        <field name="name">custom.project.form.profitability</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <!-- Add profitability fields in a new tab or section -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Financial Performance" name="financial_performance"
+                      groups="custom_project_profitability_dashboard.group_custom_profitability_access">
+                    <group>
+                        <group string="Revenue">
+                            <field name="x_net_value" string="Untaxed Amount"/>
+                            <field name="x_total_taxes" string="Taxes"/>
+                        </group>
+                        <group string="Costs">
+                            <field name="x_total_hr_cost" string="HR Costs"/>
+                            <field name="x_facilities_cost" string="Facilities Costs"/>
+                            <field name="x_travel_lodging" string="Travel &amp; Lodging"/>
+                            <field name="x_other_costs" string="Other Costs"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Summary">
+                            <field name="x_final_margin" string="Final Margin" 
+                                   decoration-success="x_final_margin >= 0"
+                                   decoration-danger="x_final_margin &lt; 0"/>
+                        </group>
+                        <group string="Alerts" invisible="not x_hr_cost_warning">
+                            <field name="x_hr_cost_warning" string="HR Cost Warning" widget="text"/>
+                        </group>
+                    </group>
+                    <div class="oe_button_box" name="profitability_buttons">
+                        <button name="action_open_payment_report" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                groups="custom_project_profitability_dashboard.group_custom_profitability_access">
+                            <field name="x_total_hr_cost" string="HR Costs" widget="statinfo"/>
+                        </button>
+                    </div>
+                </page>
+            </xpath>
+        </field>
     </record>
 
 </odoo>

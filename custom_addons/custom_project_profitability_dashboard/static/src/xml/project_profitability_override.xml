@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- 
+        Extend the ProjectRightSidePanel to add custom sections:
+        - Contract Terms (sold_items / WP items)
+        - Project's Time Performance (Total Sold with Effective/Remaining)
+        - Project Financial Performance (custom profitability)
+    -->
+    <t t-name="custom_project_profitability_dashboard.ProjectRightSidePanel" t-inherit="project.ProjectRightSidePanel" t-inherit-mode="extension">
+        
+        <!-- Add our custom sections before the milestones section -->
+        <xpath expr="//ProjectRightSidePanelSection[@name=&quot;'milestones'&quot;]" position="before">
+            
+            <!-- Contract Terms Section (Sold Items / WP List) -->
+            <t t-if="state.data.sold_items and state.data.sold_items.number_sols and state.data.sold_items.allow_billable">
+                <ProjectRightSidePanelSection
+                    name="'contract_terms'"
+                    show="true"
+                    dataClassName="'my-3'"
+                    headerClassName="'border-bottom'"
+                >
+                    <t t-set-slot="title">Contract Terms</t>
+                    <div class="o_rightpanel_data ps-3">
+                        <t t-foreach="state.data.sold_items.data" t-as="sold_item" t-key="sold_item.name">
+                            <div class="o_rightpanel_data_row d-flex justify-content-between py-1">
+                                <span class="o_rightpanel_left_col text-truncate" t-att-style="sold_item.color === 'red' ? 'color: #dc3545;' : ''" t-att-title="sold_item.name">
+                                    <t t-esc="sold_item.name"/>
+                                </span>
+                                <span class="o_rightpanel_right_col text-end fw-bold" t-att-style="sold_item.color === 'red' ? 'color: #dc3545;' : ''">
+                                    <t t-esc="sold_item.value"/>
+                                </span>
+                            </div>
+                        </t>
+                    </div>
+                </ProjectRightSidePanelSection>
+            </t>
+
+            <!-- Project's Time Performance Section (Total Sold) -->
+            <t t-if="state.data.sold_items and state.data.sold_items.allow_billable">
+                <ProjectRightSidePanelSection
+                    name="'time_performance'"
+                    show="true"
+                    dataClassName="'my-3'"
+                    headerClassName="'border-bottom'"
+                >
+                    <t t-set-slot="title">
+                        <div class="d-flex justify-content-between w-100">
+                            <span>Project's Time Performance</span>
+                            <span class="fw-bold">
+                                <t t-esc="formatFloat(state.data.sold_items.total_sold)"/>
+                                <t t-esc="state.data.sold_items.company_unit_name"/>
+                            </span>
+                        </div>
+                    </t>
+                    <div class="o_rightpanel_data ps-3">
+                        <div class="o_rightpanel_data_row d-flex justify-content-between py-1">
+                            <span class="text-muted">Effective</span>
+                            <span>
+                                <t t-esc="formatFloat(state.data.sold_items.effective_sold)"/>
+                                <t t-esc="state.data.sold_items.company_unit_name"/>
+                            </span>
+                        </div>
+                        <div class="o_rightpanel_data_row d-flex justify-content-between py-1">
+                            <span class="text-muted">Remaining</span>
+                            <span t-att-style="state.data.sold_items.remaining and state.data.sold_items.remaining.color === 'red' ? 'color: #dc3545;' : ''">
+                                <t t-esc="formatFloat(state.data.sold_items.remaining ? state.data.sold_items.remaining.value : 0)"/>
+                                <t t-esc="state.data.sold_items.company_unit_name"/>
+                            </span>
+                        </div>
+                    </div>
+                </ProjectRightSidePanelSection>
+            </t>
+
+            <!-- Project Financial Performance Section -->
+            <t t-if="state.data.custom_profitability_items and state.data.custom_profitability_items.data and state.data.custom_profitability_items.data.length > 0 and state.data.analytic_account_id">
+                <ProjectRightSidePanelSection
+                    name="'financial_performance'"
+                    show="true"
+                    dataClassName="'my-3'"
+                    headerClassName="'border-bottom'"
+                >
+                    <t t-set-slot="title">Project Financial Performance</t>
+                    <div class="o_rightpanel_data ps-3">
+                        <t t-foreach="state.data.custom_profitability_items.data" t-as="profitability" t-key="profitability.name">
+                            <div class="o_rightpanel_data_row d-flex justify-content-between py-1">
+                                <!-- Special styling for Margin -->
+                                <t t-if="profitability.name === 'Margin'">
+                                    <span class="fw-bold" style="color: #28a745; font-family: monospace; font-size: 14px;">Margin</span>
+                                    <span class="fw-bold" t-att-style="profitability.color === 'green' ? 'color: #28a745;' : (profitability.color === 'red' ? 'color: #dc3545;' : '')">
+                                        <t t-esc="profitability.value"/>
+                                    </span>
+                                </t>
+                                <!-- Special styling for Taxes -->
+                                <t t-elif="profitability.name === 'Taxes'">
+                                    <span class="fw-bold" style="color: #ffc107;">Taxes</span>
+                                    <span style="color: #ffc107;"><t t-esc="profitability.value"/></span>
+                                </t>
+                                <!-- Default styling for other items -->
+                                <t t-else="">
+                                    <span t-att-style="profitability.color === 'red' ? 'color: #dc3545;' : ''">
+                                        <t t-esc="profitability.name"/>
+                                    </span>
+                                    <span t-att-style="profitability.color === 'red' ? 'color: #dc3545;' : (profitability.color === 'green' ? 'color: #28a745;' : (profitability.color === 'yellow' ? 'color: #ffc107;' : ''))">
+                                        <t t-esc="profitability.value"/>
+                                    </span>
+                                </t>
+                            </div>
+                            <!-- Add separator before Taxes -->
+                            <t t-if="profitability.name === 'Margin'">
+                                <div style="border-top: 1px dashed #6c757d; margin: 8px 0;"></div>
+                            </t>
+                        </t>
+                    </div>
+                </ProjectRightSidePanelSection>
+            </t>
+
+        </xpath>
+    </t>
+
+</templates>

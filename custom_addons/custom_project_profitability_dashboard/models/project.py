@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This file extends the core Odoo Project module by inheriting the Project Updates feature.
 It adds a comprehensive profitability dashboard, including HR cost calculation, facilities, taxes,
@@ -7,37 +8,81 @@ Note:
 - The 'project.project' model is inherited to inject advanced financial KPIs.
 - The Project Updates action and views are customized for enhanced reporting and usability.
 - All enhancements are fully integrated with the standard Odoo Project Updates workflow.
+
+Odoo 18 Compatibility:
+- Updated profitability_items structure to use revenues/costs format
+- Updated _get_stat_buttons to use 'sequence' instead of 'order'
+- Added sold_items for Contract Terms section (ported from Odoo 15)
 """
 
 from odoo import api, models, fields
 from odoo.tools import format_amount
+from odoo.tools.misc import formatLang
 import json
+import logging
+
+_logger = logging.getLogger(__name__)
+
 
 class Project(models.Model):
     _inherit = 'project.project'
 
     # 1. Stored Profitability Fields for Performance
-    company_currency_id = fields.Many2one(related='company_id.currency_id', string='Company Currency')
+    company_currency_id = fields.Many2one(
+        related='company_id.currency_id', 
+        string='Company Currency'
+    )
     x_net_value = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Untaxed Amount")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Untaxed Amount"
+    )
     x_total_hr_cost = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="HR Costs")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="HR Costs"
+    )
     x_facilities_cost = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Facilities Costs")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Facilities Costs"
+    )
     x_travel_lodging = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Travel & Lodging")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Travel & Lodging"
+    )
     x_other_costs = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Other Costs")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Other Costs"
+    )
     x_final_margin = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Final Margin")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Final Margin"
+    )
     x_total_taxes = fields.Monetary(
-        compute='_compute_profitability_metrics', store=True, currency_field='company_currency_id', string="Total Taxes")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        currency_field='company_currency_id', 
+        string="Total Taxes"
+    )
     x_hr_cost_warning = fields.Text(
-        compute='_compute_profitability_metrics', store=True, string="HR Cost Warning")
+        compute='_compute_profitability_metrics', 
+        store=True, 
+        string="HR Cost Warning"
+    )
 
     @api.depends(
         'timesheet_ids.unit_amount',
-        'timesheet_ids.employee_id.timesheet_cost',
+        'timesheet_ids.employee_id.hourly_cost',
         'sale_order_id.order_line', 
         'sale_order_id.custom_total_net_sum',
         'sale_order_id.business_trip_ids.final_total_cost'
@@ -62,7 +107,8 @@ class Project(models.Model):
             
             if timesheet_data:
                 employee_ids = [d['employee_id'][0] for d in timesheet_data]
-                employee_costs = {emp.id: emp.timesheet_cost for emp in self.env['hr.employee'].browse(employee_ids)}
+                # In Odoo 16+, 'timesheet_cost' was renamed to 'hourly_cost'
+                employee_costs = {emp.id: emp.hourly_cost for emp in self.env['hr.employee'].browse(employee_ids)}
                 for line in timesheet_data:
                     employee_id = line['employee_id'][0]
                     employee_name = line['employee_id'][1]
@@ -78,8 +124,6 @@ class Project(models.Model):
             if employees_without_cost:
                 unique_names = sorted(list(set(employees_without_cost)))
                 project.x_hr_cost_warning = """
-
-
 The following employees have zero hourly rates, which may affect the accuracy of HR cost calculations:
 
 • %s
@@ -90,23 +134,24 @@ Please verify and update their timesheet costs in the HR module to ensure accura
                 project.x_hr_cost_warning = False
             
             # --- Other Metrics Calculation ---
-            project.x_facilities_cost = total_hr_cost * 0.15 # Hardcoded value, to be improved next.
+            # Facilities cost is 15% of HR cost (hardcoded value, consider making configurable)
+            project.x_facilities_cost = total_hr_cost * 0.15
 
             project.x_net_value = sum(order.amount_untaxed for order in sale_orders)
             project.x_total_taxes = sum(order.amount_tax for order in sale_orders)
             project.x_other_costs = sum(order.custom_total_net_sum for order in sale_orders if hasattr(order, 'custom_total_net_sum'))
             
-            # Travel & Lodging (safe check for formio module)
+            # Travel & Lodging (safe check for business trip module)
             travel_lodging = 0.0
             if 'business.trip' in self.env:
                 try:
                     # Define the states for which costs should be included
                     valid_trip_states = [
-                        'organization_done',        # Organization Completed
-                        'in_progress',              # Travel in Progress
-                        'completed_waiting_expense',# Awaiting Travel Expenses
-                        'expense_submitted',        # Expenses Under Review
-                        'completed'                 # TRAVEL PROCESS COMPLETED
+                        'organization_done',         # Organization Completed
+                        'in_progress',               # Travel in Progress
+                        'completed_waiting_expense', # Awaiting Travel Expenses
+                        'expense_submitted',         # Expenses Under Review
+                        'completed'                  # TRAVEL PROCESS COMPLETED
                     ]
                     
                     # Build search domain to find all business trips related to this project
@@ -126,12 +171,15 @@ Please verify and update their timesheet costs in the HR module to ensure accura
                     # Sum the final_total_cost from the retrieved trips
                     travel_lodging = sum(related_trips.mapped('final_total_cost'))
 
-                except Exception:
-                    # If any error occurs, set travel_lodging to 0
+                except Exception as e:
+                    _logger.warning("Error calculating travel/lodging costs for project %s: %s", project.id, e)
                     travel_lodging = 0.0
             project.x_travel_lodging = travel_lodging
 
-            project.x_final_margin = project.x_net_value - (project.x_total_hr_cost + project.x_facilities_cost + project.x_travel_lodging + project.x_other_costs)
+            project.x_final_margin = (
+                project.x_net_value - 
+                (project.x_total_hr_cost + project.x_facilities_cost + project.x_travel_lodging + project.x_other_costs)
+            )
 
     def action_open_payment_report(self):
         """
@@ -150,85 +198,330 @@ Please verify and update their timesheet costs in the HR module to ensure accura
             'context': {'default_project_id': self.id},
         }
 
-    def get_panel_data(self):
+    def _get_profitability_labels(self):
         """
-        Extend the project panel data to include profitability breakdown.
-        This data is now read from stored computed fields for maximum performance.
+        Override to add custom labels for profitability items.
         """
-        self.ensure_one()
+        labels = super()._get_profitability_labels()
+        labels.update({
+            'custom_hr_costs': self.env._('HR Costs'),
+            'custom_facilities': self.env._('Facilities Costs'),
+            'custom_travel': self.env._('Travel & Lodging'),
+            'custom_other': self.env._('Other Costs'),
+            'custom_margin': self.env._('Margin'),
+            'custom_taxes': self.env._('Taxes'),
+        })
+        return labels
+
+    def _get_profitability_sequence_per_invoice_type(self):
+        """
+        Override to add custom sequence for our profitability items.
+        """
+        sequence = super()._get_profitability_sequence_per_invoice_type()
+        sequence.update({
+            'custom_hr_costs': 50,
+            'custom_facilities': 51,
+            'custom_travel': 52,
+            'custom_other': 53,
+        })
+        return sequence
+
+    def _get_profitability_items(self, with_action=True):
+        """
+        Override to add custom profitability items (HR costs, facilities, travel, etc.)
+        to the standard profitability panel.
         
-        # Force recomputation of profitability metrics to ensure up-to-date values
+        Odoo 18 format:
+        {
+            'revenues': {'data': [...], 'total': {'invoiced': 0.0, 'to_invoice': 0.0}},
+            'costs': {'data': [...], 'total': {'billed': 0.0, 'to_bill': 0.0}}
+        }
+        """
+        profitability_items = super()._get_profitability_items(with_action)
+        
+        # Force recomputation to ensure fresh values
         self._compute_profitability_metrics()
         
-        data = super().get_panel_data()
-
-        # Add a custom button for Summary of HR Costs with updated HR cost value
-        data['buttons'].append({
-            'text': 'Summary of HR Costs',
-            'icon': 'money',
-            'action': 'action_open_payment_report',
-            'action_type': 'object',
-            'show': True,
-            'order': 99,
-            'number': format_amount(self.env, self.x_total_hr_cost or 0.0, self.company_id.currency_id),
-            'additional_context': json.dumps({'default_project_id': self.id}),
-        })
-
-        # Prepare profitability data for the UI from the new stored fields
-        profit_data = [
-            {'name': 'Untaxed Amount', 'value': format_amount(self.env, self.x_net_value, self.company_id.currency_id), 'color': ''},
-            {'name': 'HR Costs', 'value': format_amount(self.env, -self.x_total_hr_cost, self.company_id.currency_id), 'color': 'red' if self.x_total_hr_cost else ''},
-            {'name': 'Facilities Costs', 'value': format_amount(self.env, -self.x_facilities_cost, self.company_id.currency_id), 'color': 'red' if self.x_facilities_cost else ''},
-            {'name': 'Travel & Lodging', 'value': format_amount(self.env, -self.x_travel_lodging, self.company_id.currency_id), 'color': 'red' if self.x_travel_lodging else ''},
-            {'name': 'Other Costs', 'value': format_amount(self.env, -self.x_other_costs, self.company_id.currency_id), 'color': 'red' if self.x_other_costs else ''},
-            {'name': 'Margin', 'value': format_amount(self.env, self.x_final_margin, self.company_id.currency_id), 'color': 'green' if self.x_final_margin > 0 else ('red' if self.x_final_margin < 0 else ''), 'bold': True},
-            {'name': 'Taxes', 'value': format_amount(self.env, self.x_total_taxes, self.company_id.currency_id), 'color': 'yellow' if self.x_total_taxes else ''},
-        ]
+        sequence = self._get_profitability_sequence_per_invoice_type()
         
-        # Add HR cost warning if exists with improved styling
-        if self.x_hr_cost_warning:
-            # Add some spacing before the warning
-            profit_data.append({
-                'name': '─' * 50,  # Separator line
-                'value': '', 
-                'color': 'muted',
-                'separator': True
+        # Add HR Costs to costs section
+        if self.x_total_hr_cost:
+            profitability_items['costs']['data'].append({
+                'id': 'custom_hr_costs',
+                'sequence': sequence.get('custom_hr_costs', 50),
+                'billed': -self.x_total_hr_cost,
+                'to_bill': 0.0,
             })
-            profit_data.append({
-                'name': '⚠️ HR Cost Alert', 
-                'value': self.x_hr_cost_warning, 
-                'color': 'warning',
-                'bold': True,
-                'warning': True,
-                'style': 'background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 10px 0;'
-            })
-            # Add spacing after the warning
-            profit_data.append({
-                'name': '─' * 50,  # Separator line
-                'value': '', 
-                'color': 'muted',
-                'separator': True
-            })
+            profitability_items['costs']['total']['billed'] -= self.x_total_hr_cost
 
-        if 'profitability_items' in data:
-            data['profitability_items']['data'] = profit_data
-            # Add HR cost warning to profitability data
-            data['profitability_items']['hr_cost_warning'] = self.x_hr_cost_warning or False
+        # Add Facilities Costs
+        if self.x_facilities_cost:
+            profitability_items['costs']['data'].append({
+                'id': 'custom_facilities',
+                'sequence': sequence.get('custom_facilities', 51),
+                'billed': -self.x_facilities_cost,
+                'to_bill': 0.0,
+            })
+            profitability_items['costs']['total']['billed'] -= self.x_facilities_cost
+
+        # Add Travel & Lodging
+        if self.x_travel_lodging:
+            profitability_items['costs']['data'].append({
+                'id': 'custom_travel',
+                'sequence': sequence.get('custom_travel', 52),
+                'billed': -self.x_travel_lodging,
+                'to_bill': 0.0,
+            })
+            profitability_items['costs']['total']['billed'] -= self.x_travel_lodging
+
+        # Add Other Costs
+        if self.x_other_costs:
+            profitability_items['costs']['data'].append({
+                'id': 'custom_other',
+                'sequence': sequence.get('custom_other', 53),
+                'billed': -self.x_other_costs,
+                'to_bill': 0.0,
+            })
+            profitability_items['costs']['total']['billed'] -= self.x_other_costs
+
+        # Add custom revenue if we have net value from sale orders
+        if self.x_net_value and not any(r.get('id') == 'custom_revenue' for r in profitability_items['revenues']['data']):
+            # Check if there's already revenue data, if not add our custom one
+            existing_revenue = profitability_items['revenues']['total']['invoiced'] + profitability_items['revenues']['total']['to_invoice']
+            if existing_revenue == 0:
+                profitability_items['revenues']['data'].append({
+                    'id': 'custom_revenue',
+                    'sequence': 1,
+                    'invoiced': self.x_net_value,
+                    'to_invoice': 0.0,
+                })
+                profitability_items['revenues']['total']['invoiced'] += self.x_net_value
+
+        return profitability_items
+
+    def _get_sale_order_lines(self):
+        """Get sale order lines for the project."""
+        sale_orders = self._get_sale_orders()
+        return self.env['sale.order.line'].search([
+            ('order_id', 'in', sale_orders.ids), 
+            ('is_service', '=', True), 
+            ('is_downpayment', '=', False)
+        ], order='id asc')
+
+    def _get_sold_items(self):
+        """
+        Get sold items data for Contract Terms section.
+        Ported from Odoo 15 sale_timesheet module.
+        Returns data structure for displaying WP items with hours.
+        """
+        timesheet_encode_uom = self.env.company.timesheet_encode_uom_id
+        product_uom_unit = self.env.ref('uom.product_uom_unit', raise_if_not_found=False)
+        product_uom_hour = self.env.ref('uom.product_uom_hour', raise_if_not_found=False)
+
+        sols = self._get_sale_order_lines()
+        number_sale_orders = len(sols.order_id)
+        
+        sold_items = {
+            'allow_billable': self.allow_billable if hasattr(self, 'allow_billable') else True,
+            'data': [],
+            'number_sols': len(sols),
+            'total_sold': 0,
+            'effective_sold': 0,
+            'company_unit_name': timesheet_encode_uom.name if timesheet_encode_uom else 'Hours'
+        }
+
+        for sol in sols:
+            # Get display name
+            if number_sale_orders > 1:
+                name = sol.display_name
+            else:
+                name = sol.name
+
+            product_uom_convert = sol.product_uom
+            if product_uom_unit and product_uom_convert == product_uom_unit:
+                product_uom_convert = product_uom_hour
+
+            # Calculate quantities
+            qty_delivered = 0.0
+            product_uom_qty = 0.0
+            
+            if product_uom_convert and timesheet_encode_uom:
+                try:
+                    qty_delivered = product_uom_convert._compute_quantity(
+                        sol.qty_delivered, timesheet_encode_uom, raise_if_failure=False
+                    ) or 0.0
+                    product_uom_qty = product_uom_convert._compute_quantity(
+                        sol.product_uom_qty, timesheet_encode_uom, raise_if_failure=False
+                    ) or 0.0
+                except Exception:
+                    qty_delivered = sol.qty_delivered or 0.0
+                    product_uom_qty = sol.product_uom_qty or 0.0
+
+                if product_uom_convert.category_id == timesheet_encode_uom.category_id:
+                    product_uom_convert = timesheet_encode_uom
+
+            if qty_delivered > 0 or product_uom_qty > 0:
+                uom_name = product_uom_convert.name if product_uom_convert else 'Hours'
+                sold_items['data'].append({
+                    'name': name,
+                    'value': '%s / %s %s' % (
+                        formatLang(self.env, qty_delivered, digits=1),
+                        formatLang(self.env, product_uom_qty, digits=1),
+                        uom_name
+                    ),
+                    'color': 'red' if qty_delivered > product_uom_qty else 'black'
+                })
+                
+                # Sum totals for time-based products
+                if timesheet_encode_uom and product_uom_unit:
+                    if (sol.product_uom.category_id == timesheet_encode_uom.category_id or 
+                        (sol.product_uom == product_uom_unit and 
+                         hasattr(sol.product_id, 'service_policy') and 
+                         sol.product_id.service_policy != 'delivered_manual')):
+                        sold_items['total_sold'] += product_uom_qty
+                        sold_items['effective_sold'] += qty_delivered
+
+        remaining = sold_items['total_sold'] - sold_items['effective_sold']
+        sold_items['remaining'] = {
+            'value': remaining,
+            'color': 'red' if remaining < 0 else 'black',
+        }
+        
+        # Check if forecast is available
+        sold_items['allow_forecast'] = hasattr(self, 'allow_forecast') and self.allow_forecast
+        sold_items['planned_sold'] = 0  # Placeholder for forecast data
+        
+        return sold_items
+
+    def _get_custom_profitability_items(self):
+        """
+        Get custom profitability items in the format expected by the old template.
+        Returns data in the format: [{'name': 'Label', 'value': 'formatted_value', 'color': 'color'}]
+        """
+        currency = self.company_id.currency_id
+        items = []
+        
+        # Force recomputation
+        self._compute_profitability_metrics()
+        
+        # Untaxed Amount
+        items.append({
+            'name': 'Untaxed Amount',
+            'value': format_amount(self.env, self.x_net_value or 0.0, currency),
+            'color': ''
+        })
+        
+        # HR Costs
+        items.append({
+            'name': 'HR Costs',
+            'value': format_amount(self.env, -(self.x_total_hr_cost or 0.0), currency),
+            'color': 'red' if self.x_total_hr_cost else ''
+        })
+        
+        # Facilities Costs
+        items.append({
+            'name': 'Facilities Costs',
+            'value': format_amount(self.env, -(self.x_facilities_cost or 0.0), currency),
+            'color': 'red' if self.x_facilities_cost else ''
+        })
+        
+        # Travel & Lodging
+        items.append({
+            'name': 'Travel & Lodging',
+            'value': format_amount(self.env, -(self.x_travel_lodging or 0.0), currency),
+            'color': 'red' if self.x_travel_lodging else ''
+        })
+        
+        # Other Costs
+        items.append({
+            'name': 'Other Costs',
+            'value': format_amount(self.env, -(self.x_other_costs or 0.0), currency),
+            'color': 'red' if self.x_other_costs else ''
+        })
+        
+        # Margin
+        items.append({
+            'name': 'Margin',
+            'value': format_amount(self.env, self.x_final_margin or 0.0, currency),
+            'color': 'green' if (self.x_final_margin or 0) >= 0 else 'red'
+        })
+        
+        # Taxes
+        items.append({
+            'name': 'Taxes',
+            'value': format_amount(self.env, self.x_total_taxes or 0.0, currency),
+            'color': 'yellow' if self.x_total_taxes else ''
+        })
+        
+        return items
+
+    def get_panel_data(self):
+        """
+        Extend the project panel data to include additional profitability information.
+        Includes: HR cost button, sold_items (Contract Terms), and profitability_items.
+        """
+        self.ensure_one()
+        data = super().get_panel_data()
+        
+        if not data:
+            return data
+            
+        # Force recomputation to ensure up-to-date values
+        self._compute_profitability_metrics()
+
+        # Add custom button for Summary of HR Costs
+        if 'buttons' in data:
+            data['buttons'].append({
+                'icon': 'money',
+                'text': self.env._('HR Costs Detail'),
+                'number': format_amount(self.env, self.x_total_hr_cost or 0.0, self.company_id.currency_id),
+                'action_type': 'object',
+                'action': 'action_open_payment_report',
+                'additional_context': json.dumps({'default_project_id': self.id}),
+                'show': True,
+                'sequence': 45,
+            })
+            
+        # Add HR cost warning to the data if exists
+        if self.x_hr_cost_warning:
+            data['hr_cost_warning'] = self.x_hr_cost_warning
+
+        # Add sold_items for Contract Terms section (like Odoo 15)
+        data['sold_items'] = self._get_sold_items()
+        
+        # Add analytic_account_id for profitability check
+        if hasattr(self, 'analytic_account_id'):
+            data['analytic_account_id'] = self.analytic_account_id.id if self.analytic_account_id else False
+        elif hasattr(self, 'account_id'):
+            data['analytic_account_id'] = self.account_id.id if self.account_id else False
+        else:
+            data['analytic_account_id'] = False
+
+        # Add custom profitability items in old format for our custom template
+        data['custom_profitability_items'] = {
+            'data': self._get_custom_profitability_items()
+        }
 
         return data
 
-
-
     def _get_stat_buttons(self):
         """
-        Override the default stat buttons to rename 'Gross Margin' to 'Detailed HR Costs' and update its value.
+        Override to add/modify stat buttons.
+        Odoo 18 uses 'sequence' for ordering buttons.
         """
         buttons = super()._get_stat_buttons()
+        
+        # Optionally modify existing buttons or add new ones here
+        # For example, rename 'Gross Margin' if it exists
         for button in buttons:
-            if str(button['text']) == 'Gross Margin':
-                button['text'] = 'Detailed HR Costs'
-                # Update the button value to show actual HR costs instead of gross margin
-                button['number'] = format_amount(self.env, self.x_total_hr_cost or 0.0, self.company_id.currency_id)
+            if button.get('text') == 'Gross Margin':
+                button['text'] = self.env._('Detailed HR Costs')
+                button['number'] = format_amount(
+                    self.env, 
+                    self.x_total_hr_cost or 0.0, 
+                    self.company_id.currency_id
+                )
+        
         return buttons
 
     def _get_sale_orders(self):
@@ -246,11 +539,3 @@ Please verify and update their timesheet costs in the HR module to ensure accura
             sale_orders = self.env['sale.order'].search([('name', '=', self.name)], limit=1)
         
         return sale_orders
-
-    # TODO: For future improvements, consider making the facilities cost percentage configurable from settings.
-    # TODO: Log a warning when a user has no defined timesheet_cost
-
-class CustomProjectProfitabilityDashboard(models.TransientModel):
-    _name = 'custom.project.profitability.dashboard'
-    _description = 'Custom Project Profitability Dashboard'
-    # ...

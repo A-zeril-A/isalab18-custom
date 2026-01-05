@@ -1,0 +1,135 @@
+/**
+ * Custom Project Profitability Dashboard Styles
+ * Enhances the visual appearance of the profitability panel
+ */
+
+.o_rightpanel {
+    // Contract Terms Section
+    .o_contract_terms_section {
+        .o_rightpanel_title {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+    }
+
+    // Time Performance Section
+    .o_time_performance_section {
+        .remaining-positive {
+            color: #28a745 !important;
+        }
+        .remaining-negative {
+            color: #dc3545 !important;
+        }
+    }
+
+    // Financial Performance Section - Enhanced styling
+    .o_financial_performance {
+        .o_rightpanel_title {
+            font-weight: 700;
+            color: #343a40;
+        }
+
+        // Margin row styling
+        .margin-row {
+            td:first-child {
+                color: #28a745;
+                font-weight: 700;
+                font-family: monospace;
+                font-size: 14px;
+            }
+            td:last-child {
+                font-weight: 800;
+            }
+        }
+
+        // Taxes row styling
+        .taxes-row {
+            td:first-child {
+                color: #ffc107;
+                font-weight: 600;
+            }
+        }
+
+        // Separator before taxes
+        .taxes-separator {
+            border-top: 1px dashed #ccc;
+            width: 50%;
+            margin: 8px 0;
+        }
+    }
+
+    // HR Cost Warning Alert
+    .o_hr_cost_warning {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 4px;
+
+        .warning-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .warning-content {
+            color: #856404;
+            font-size: 13px;
+            white-space: pre-line;
+        }
+    }
+
+    // Profitability Items Table Styling
+    .o_rightpanel_subsection {
+        table {
+            // Cost items (negative values) in red
+            .cost-item {
+                color: #dc3545;
+            }
+
+            // Revenue items in default color
+            .revenue-item {
+                color: #28a745;
+            }
+
+            // Bold for important totals
+            .total-row {
+                font-weight: 700;
+                border-top: 2px solid #dee2e6;
+            }
+        }
+    }
+
+    // Custom stat button for HR Costs
+    .o_stat_button[data-action="action_open_payment_report"] {
+        .o_stat_value {
+            color: #6c757d;
+        }
+    }
+}
+
+// Dark mode support
+.o_dark {
+    .o_rightpanel {
+        .o_hr_cost_warning {
+            background-color: #3d3d00;
+            border-left-color: #ffc107;
+            
+            .warning-title,
+            .warning-content {
+                color: #ffe066;
+            }
+        }
+
+        .o_financial_performance {
+            .margin-row td:first-child {
+                color: #4ade80;
+            }
+            .taxes-row td:first-child {
+                color: #fcd34d;
+            }
+        }
+    }
+}
+

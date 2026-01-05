@@ -1,7 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-
+    <!-- 
+        Rename the Project Updates action to 'Contract Performance Sheet'
+        This provides better business context for users viewing project financial data.
+    -->
     <record id="project.project_update_all_action" model="ir.actions.act_window">
-        <field name="name">Contract Performance Sheet</field> 
+        <field name="name">Contract Performance Sheet</field>
     </record>
-
 </odoo>

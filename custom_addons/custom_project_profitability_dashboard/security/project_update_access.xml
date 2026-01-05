@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- 
+        Security Rules for Restricting Project Updates Access
+        Only users in the 'Custom Profitability Access' group can access project updates with financial data.
+        
+        This provides fine-grained control over who can see sensitive project financial information.
+    -->
 
-
+    <!-- Disable default visibility rules for project updates -->
     <function model="ir.rule" name="write" eval="[ref('project.update_visibility_rule'), {'active': False}]"/>
     <function model="ir.rule" name="write" eval="[ref('project.update_visibility_project_admin'), {'active': False}]"/>
 
+    <!-- Remove default access for base users -->
     <record id="project.access_project_update_user" model="ir.model.access">
         <field name="perm_read" eval="False"/>
         <field name="perm_write" eval="False"/>
@@ -12,6 +19,7 @@
         <field name="perm_unlink" eval="False"/>
     </record>
 
+    <!-- Remove default access for project users -->
     <record id="project.access_project_update_project_user" model="ir.model.access">
         <field name="perm_read" eval="False"/>
         <field name="perm_write" eval="False"/>
@@ -19,6 +27,7 @@
         <field name="perm_unlink" eval="False"/>
     </record>
     
+    <!-- Remove default access for project managers -->
     <record id="project.access_project_update_project_manager" model="ir.model.access">
         <field name="perm_read" eval="False"/>
         <field name="perm_write" eval="False"/>
@@ -31,33 +40,16 @@
         <field name="groups_id" eval="[(4, ref('custom_project_profitability_dashboard.group_custom_profitability_access'))]"/>
     </record>
 
-
-    <record id="rule_project_update_custom_analytics_group" model="ir.rule">
-        <field name="name">Project Update: Custom Analytics Group Access</field>
+    <!-- Custom rule: Allow full access to project updates for Custom Profitability Access Group -->
+    <record id="rule_project_update_custom_profitability_group" model="ir.rule">
+        <field name="name">Project Update: Custom Profitability Group Access</field>
         <field name="model_id" ref="project.model_project_update"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('custom_project_profitability_dashboard.group_custom_profitability_access'))]"/>
-    </record>  
-
-
-    <!-- <record id="rule_project_update_global_deny" model="ir.rule">
-        <field name="name">Project Update: Global Deny</field>
-        <field name="model_id" ref="project.model_project_update"/>
-        <field name="domain_force">[(0, '=', 1)]</field>
-        <field name="groups" eval="[
-        (4, ref('base.group_user')),
-        (4, ref('project.group_project_user')),
-        (4, ref('project.group_project_manager'))
-        ]"/>
-    </record>     -->
-   
-
-    <record id="rule_project_update_read_access_custom" model="ir.rule">
-        <field name="name">Project Update Read Access Custom</field>
-        <field name="model_id" ref="project.model_project_update"/>
-        <field name="groups" eval="[(4, ref('custom_project_profitability_dashboard.group_custom_profitability_access'))]"/>
-        <field name="perm_read">1</field>
-        <field name="perm_write">0</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
     </record>
 
 </odoo>

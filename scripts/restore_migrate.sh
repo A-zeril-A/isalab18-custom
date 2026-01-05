@@ -292,6 +292,45 @@ EOSQL
     fi
 }
 
+# Setup OpenUpgrade and dependencies
+setup_openupgrade() {
+    print_step "SETUP" "Checking OpenUpgrade Prerequisites"
+    
+    local OPENUPGRADE_DIR="${ODOO_DIR}/OpenUpgrade"
+    
+    # Check/Clone OpenUpgrade
+    if [ ! -d "$OPENUPGRADE_DIR" ]; then
+        print_warning "OpenUpgrade not found. Cloning..."
+        sudo -u odoo git clone --branch ${VERSION}.0 --depth 1 https://github.com/OCA/OpenUpgrade.git "$OPENUPGRADE_DIR"
+        if [ $? -eq 0 ]; then
+            print_success "OpenUpgrade cloned successfully"
+        else
+            print_error "Failed to clone OpenUpgrade"
+            return 1
+        fi
+    else
+        print_success "OpenUpgrade found: $OPENUPGRADE_DIR"
+    fi
+    
+    # Check/Install openupgradelib
+    print_info "Checking openupgradelib..."
+    if sudo -u odoo bash -c "source ${VENV_DIR}/bin/activate && pip show openupgradelib > /dev/null 2>&1"; then
+        print_success "openupgradelib is installed"
+    else
+        print_warning "Installing openupgradelib..."
+        sudo -u odoo bash -c "source ${VENV_DIR}/bin/activate && pip install openupgradelib --quiet"
+        if [ $? -eq 0 ]; then
+            print_success "openupgradelib installed successfully"
+        else
+            print_error "Failed to install openupgradelib"
+            return 1
+        fi
+    fi
+    
+    echo ""
+    return 0
+}
+
 # Run OpenUpgrade migration
 run_migration() {
     print_step "3" "Running OpenUpgrade Migration"
@@ -408,6 +447,12 @@ main() {
             print_error "Invalid selection"
             exit 1
         fi
+    fi
+    
+    # Setup OpenUpgrade prerequisites
+    if ! setup_openupgrade; then
+        print_error "Failed to setup OpenUpgrade prerequisites"
+        exit 1
     fi
     
     # Ask to run migration

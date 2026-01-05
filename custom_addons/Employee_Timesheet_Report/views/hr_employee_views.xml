@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit employee form view to add payroll_code field -->
+    <record id="view_employee_form_inherit_payroll_code" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.payroll.code</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='work_email']" position="after">
+                <field name="payroll_code" 
+                       placeholder="e.g., 0000013"
+                       help="Official employee code used for payroll system integration"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit employee list view to show payroll_code -->
+    <record id="view_employee_tree_inherit_payroll_code" model="ir.ui.view">
+        <field name="name">hr.employee.tree.inherit.payroll.code</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='work_email']" position="after">
+                <field name="payroll_code" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

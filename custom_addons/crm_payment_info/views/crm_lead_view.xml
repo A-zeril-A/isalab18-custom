@@ -1,59 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- 
+        Odoo 18 Compatible CRM Lead Form View - Payment Summary
+        
+        Note: Changed XPath target from expected_revenue (which may be hidden by other modules)
+        to a more reliable location after the oe_title div.
+    -->
     <record id="view_crm_lead_form_inherit_payment_summary" model="ir.ui.view">
         <field name="name">crm.lead.form.inherit.payment.summary</field>
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="priority">50</field>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='expected_revenue']" position="after">
-                <div class="o_group">
-                    <div class="o_horizontal_separator">Sales summary</div>
-                    <group>
-                        <group>
-                            <div class="oe_inline" style="width: 100%;">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Total</th>
-                                            <th></th>
-                                            <th>Paid</th>
-                                            <th></th>
-                                            <th>Unpaid</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <field name="amount_total" widget="monetary" options="{'field_currency': 'currency_id'}" nolabel="1"/>
-                                            </td>
-                                            <td>=</td>
-                                            <td>
-                                                <field name="amount_paid" widget="monetary" options="{'field_currency': 'currency_id'}" nolabel="1"/>
-                                            </td>
-                                            <td>+</td>
-                                            <td>
-                                                <field name="amount_due" widget="monetary" options="{'field_currency': 'currency_id'}" nolabel="1"/>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                <table class="table table-sm mt-2">
-                                    <thead>
-                                        <tr>
-                                            <th>Untaxed Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <field name="amount_untaxed" widget="monetary" options="{'field_currency': 'currency_id'}" nolabel="1"/>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+            <!-- Add payment summary after the title section, targeting the oe_title div -->
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <div class="row mt-3 mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <strong>Sales Summary</strong>
                             </div>
-                        </group>
-                    </group>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-4 text-center">
+                                        <span class="o_form_label text-muted">Total</span>
+                                        <div class="h5">
+                                            <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <span class="o_form_label text-muted">Paid</span>
+                                        <div class="h5 text-success">
+                                            <field name="amount_paid" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <span class="o_form_label text-muted">Due</span>
+                                        <div class="h5 text-danger">
+                                            <field name="amount_due" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr/>
+                                <div class="row">
+                                    <div class="col-12 text-center">
+                                        <span class="o_form_label text-muted">Untaxed Amount</span>
+                                        <div>
+                                            <field name="amount_untaxed" widget="monetary" options="{'currency_field': 'currency_id'}" nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

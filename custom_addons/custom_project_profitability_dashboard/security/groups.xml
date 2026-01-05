@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- 
+        Custom Security Group for Profitability Dashboard Access
+        Users in this group can view project profitability data including:
+        - HR costs breakdown
+        - Facilities costs
+        - Travel & Lodging expenses
+        - Margin analysis
+        - Contract terms and time performance
+    -->
     <record id="group_custom_profitability_access" model="res.groups">
         <field name="name">Custom Profitability Access</field>
+        <field name="comment">Users in this group can view project profitability data including HR costs, facilities, travel expenses, and margin analysis. This group provides access to sensitive financial information in the project dashboard.</field>
         <field name="category_id" ref="base.module_category_project"/>
         <field name="implied_ids" eval="[(4, ref('analytic.group_analytic_accounting'))]"/>
     </record>

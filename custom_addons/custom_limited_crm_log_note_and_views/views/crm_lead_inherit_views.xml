@@ -1,29 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Tree view -->
+    <!-- 
+        Odoo 18 Compatible List/Tree and Pivot View Inheritance
+        
+        Hides expected_revenue and recurring_revenue fields from list and pivot views
+        for users without 'CRM Full Access' permission.
+    -->
+
+    <!-- Tree/List view - Hide expected_revenue for non-privileged users -->
     <record id="crm_lead_tree_opportunity_inherit" model="ir.ui.view">
         <field name="name">crm.lead.tree.opportunity.inherit</field>
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
-                <attribute name="invisible">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='recurring_revenue_monthly']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
+            </xpath>
+            <xpath expr="//field[@name='recurring_revenue']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
             </xpath>
         </field>
     </record>
-    <!-- PIVOT view -->
+
+    <!-- Pivot view - Hide expected_revenue for non-privileged users -->
     <record id="crm_lead_pivot_inherit" model="ir.ui.view">
         <field name="name">crm.lead.pivot.inherit</field>
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_pivot"/>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
-                <attribute name="invisible">0</attribute>
             </xpath>
-            <xpath expr="//field[@name='recurring_revenue_monthly']" position="attributes">
+        </field>
+    </record>
+
+    <!-- 
+        Note: Graph view restrictions are not implemented here because:
+        - Graph views use aggregated data which cannot be effectively hidden via groups attribute
+        - For complete data security, consider implementing record rules (ir.rule)
+        - The groups attribute on graph fields may not fully hide aggregated values
+    -->
+
+    <!-- Activity view - Hide expected_revenue for non-privileged users -->
+    <record id="crm_lead_activity_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.activity.inherit</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_activity"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
-                <attribute name="invisible">0</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Calendar view - Hide expected_revenue for non-privileged users -->
+    <record id="crm_lead_calendar_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.calendar.inherit</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_calendar_view_leads"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Quick Create Form - Hide expected_revenue for non-privileged users -->
+    <record id="crm_lead_quick_create_inherit" model="ir.ui.view">
+        <field name="name">crm.lead.quick_create.inherit</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
+            </xpath>
+            <xpath expr="//field[@name='recurring_revenue']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
+            </xpath>
+            <xpath expr="//field[@name='recurring_plan']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
+            </xpath>
+            <xpath expr="//label[@for='expected_revenue']" position="attributes">
+                <attribute name="groups">custom_limited_crm_log_note_and_views.group_crm_full_access</attribute>
             </xpath>
         </field>
     </record>
